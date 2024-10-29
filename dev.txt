@@ -1,0 +1,64 @@
+=== vendor ===
+@version v8.2.1
+
+
+--> Laravel\Lumen\Concerns\RegistersExceptionHandlers@registerErrorHandling;
+
+    protected function registerErrorHandling()
+    {
+        // error_reporting(-1);
+        if (defined('ASURA_DEBUG') && !ASURA_DEBUG) {
+            error_reporting(0);
+        }
+
+        set_error_handler(function ($level, $message, $file = '', $line = 0) {
+            if (error_reporting() & $level) {
+                throw new ErrorException($message, 0, $level, $file, $line);
+            }
+        });
+
+        set_exception_handler(function ($e) {
+            $this->handleException($e);
+        });
+
+        register_shutdown_function(function () {
+            $this->handleShutdown();
+        });
+    }
+
+
+--> Laravel\Lumen\Concerns\RoutesRequests@run;
+
+    public function run($request = null)
+    {
+        $response = $this->dispatch($request);
+
+        if ($response instanceof SymfonyResponse) {
+            $response->send();
+        } else {
+            echo (string) $response;
+        }
+
+        if (count($this->middleware) > 0) {
+            $this->callTerminableMiddleware($response);
+        }
+
+        return $response;
+    }
+
+
+--> Laravel\Lumen\Concerns\RoutesRequests@handleDispatcherResponse;
+
+    protected function handleDispatcherResponse($routeInfo)
+    {
+        switch ($routeInfo[0]) {
+            case Dispatcher::NOT_FOUND:
+                return false;
+                throw new NotFoundHttpException;
+            case Dispatcher::METHOD_NOT_ALLOWED:
+                return false;
+                throw new MethodNotAllowedHttpException($routeInfo[1]);
+            case Dispatcher::FOUND:
+                return $this->handleFoundRoute($routeInfo);
+        }
+    }
